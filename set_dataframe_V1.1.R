@@ -23,7 +23,15 @@ listas <- list()
 for (i in 1:length(archivos_excel)) {
   tryCatch({
     data_aux <- read_excel(archivos_excel[i])
-    
+
+    if ("temaline_interface" %in% colnames(data_aux)) {
+      row_aux <- which(data_aux$temaline_interface == "Views")
+      # Si se encontró el marcador, se filtra la tabla
+      if (length(row_aux) > 0) {
+        data_aux <- data_aux[1:(row_aux[1] - 1), ]
+      }
+    }
+        
     # Renombrar la tercera columna a "operator" ANTES de cualquier operación
     if (ncol(data_aux) >= 3) {
       colnames(data_aux)[3] <- "operator"
@@ -58,13 +66,7 @@ for (i in 1:length(archivos_excel)) {
     }
     
     # Encontrar la fila del marcador "views"
-    if ("temaline_interface" %in% colnames(data_aux)) {
-      row_aux <- which(data_aux$temaline_interface == "Views")
-      # Si se encontró el marcador, se filtra la tabla
-      if (length(row_aux) > 0) {
-        data_aux <- data_aux[1:(row_aux[1] - 1), ]
-      }
-    }
+
     
     # Almacenar el data frame en la lista
     listas[[i]] <- data_aux
@@ -76,8 +78,6 @@ for (i in 1:length(archivos_excel)) {
 
 # Combina todos los data frames de la lista en uno solo
 df_combinado <- bind_rows(listas)
-
-message("Datos combinados exitosamente.")
 
 # Lista de las categorías a filtrar en la columna 'Name'
 categorias_filtrar <- c(
@@ -100,5 +100,26 @@ df_resumen <- df_combinado %>%
     .groups = 'drop'
   )
 
-# Muestra el resultado final
-head(df_resumen)
+# 1. Pivoting de los datos para ver el conteo por fecha y hora
+df_pivoteado <- df_resumen %>%
+  pivot_wider(
+    id_cols = c(fecha, sap_transit_flag),
+    names_from = hora,
+    values_from = conteo
+  )
+
+columnas_horas_ordenadas <- as.character(0:23)
+
+# Seleccionar las columnas en el orden deseado
+df_pivoteado_ordenado <- df_pivoteado %>%
+  select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
+
+data_exit <- df_pivoteado %>% filter(sap_transit_flag == "Exit")
+data_exit <- data_exit %>%
+  select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
+
+data_entry <- data_entry %>% filter(sap_transit_flag == "Entry")
+data_entry <- data_entry %>%
+  select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
+
+
