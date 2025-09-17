@@ -124,4 +124,7 @@ data_entry <- df_pivoteado %>% filter(sap_transit_flag == "Entry")
 data_entry <- data_entry %>%
   select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
 
+mat_dif <- as.matrix(data_entry[, 3:26]) - as.matrix(data_exit[, 3:26])
+
+
 
