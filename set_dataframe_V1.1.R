@@ -1,10 +1,12 @@
+install.packages("tidyr")
+
 # Cargar las librerías necesarias
 library(readxl)
 library(dplyr)
 library(purrr)
 library(janitor) 
 library(lubridate) 
-
+library(tidyr)
 # Define la ruta a tu carpeta principal
 ruta_carpeta <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy"
 
@@ -118,7 +120,7 @@ data_exit <- df_pivoteado %>% filter(sap_transit_flag == "Exit")
 data_exit <- data_exit %>%
   select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
 
-data_entry <- data_entry %>% filter(sap_transit_flag == "Entry")
+data_entry <- df_pivoteado %>% filter(sap_transit_flag == "Entry")
 data_entry <- data_entry %>%
   select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
 
