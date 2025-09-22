@@ -13,8 +13,9 @@ library(purrr)
 library(janitor) 
 library(lubridate) 
 library(tidyr)
+
 # Define la ruta a tu carpeta principal
-ruta_carpeta <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy"
+ruta_carpeta <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/New_Format"
 
 # Obtener la lista de rutas de todos los archivos .xls y .xlsx
 archivos_excel <- list.files(
@@ -26,6 +27,8 @@ archivos_excel <- list.files(
 
 # Crear una lista vacía para almacenar los data frames
 listas <- list()
+
+# data_aux <- read_excel(archivos_excel[23])
 
 # Bucle para leer cada archivo y almacenarlo de manera segura
 for (i in 1:length(archivos_excel)) {
@@ -89,38 +92,62 @@ df_combinado <- bind_rows(listas)
 
 # Lista de las categorías a filtrar en la columna 'Name'
 categorias_filtrar <- c(
-  "TK54RT54", "TK55RT55", "TK56RT56", "TK57RT57", "TK59RT58", 
+  "TK54RT54", "TK55RT55", "TK56RT56", "TK57RT57", "TK58RT58", 
   "TK60RT60", "TK72RT72", "TK76RT76", "TK77RT77", "TK78RT78"
 )
-
-# Realizar todas las operaciones de limpieza y resumen en un solo flujo
+# Paso 1: Contar las transacciones por hora (como lo habías hecho)
 df_resumen <- df_combinado %>%
   filter(name %in% categorias_filtrar) %>%
   mutate(
-    # Convertir la columna 'operator' a formato de fecha y hora aquí
     fecha = as_date(operator),
     hora = hour(operator)
   ) %>%
-  # Agrupar los datos para el conteo
-  group_by(fecha, hora, sap_transit_flag) %>%
-  summarise(
-    conteo = n(),
+  count(fecha, sap_transit_flag, hora, name = "transacciones_por_hora")
+
+# Paso 2: Generar una tabla de referencia con todas las combinaciones de fecha, tipo de tránsito y hora
+fechas_unicas <- unique(df_resumen$fecha)
+tipos_transito <- unique(df_resumen$sap_transit_flag)
+horas_completas <- 0:23
+
+df_horas_completas <- expand_grid(
+  fecha = fechas_unicas,
+  sap_transit_flag = tipos_transito,
+  hora = horas_completas
+)
+
+# Paso 3: Unir y rellenar los datos antes de la suma acumulada
+df_resumen_completo <- left_join(
+  df_horas_completas,
+  df_resumen,
+  by = c("fecha", "sap_transit_flag", "hora")
+) %>%
+  # Rellena los NA con 0
+  replace_na(list(transacciones_por_hora = 0)) %>%
+  # Ordena los datos por fecha y hora para que cumsum() funcione bien
+  arrange(fecha, hora) %>%
+  
+  # Agrupa por fecha y tipo de tránsito para la suma acumulada
+  group_by(fecha, sap_transit_flag) %>%
+  
+  # Aplica la suma acumulada a los conteos por hora (ahora sin NAs)
+  mutate(
+    conteo_acumulado = cumsum(transacciones_por_hora),
     .groups = 'drop'
   )
 
-# 1. Pivoting de los datos para ver el conteo por fecha y hora
-df_pivoteado <- df_resumen %>%
+# 4. Pivoting de los datos para ver el conteo por fecha y hora
+df_pivoteado <- df_resumen_completo %>%
   pivot_wider(
     id_cols = c(fecha, sap_transit_flag),
     names_from = hora,
-    values_from = conteo
+    values_from = conteo_acumulado
   )
-
 columnas_horas_ordenadas <- as.character(0:23)
 
 # Seleccionar las columnas en el orden deseado
 df_pivoteado_ordenado <- df_pivoteado %>%
-  select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
+  select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas)) %>% 
+  drop_na(fecha)
 
 data_exit <- df_pivoteado %>% filter(sap_transit_flag == "Exit")
 data_exit <- data_exit %>%
@@ -130,7 +157,5 @@ data_entry <- df_pivoteado %>% filter(sap_transit_flag == "Entry")
 data_entry <- data_entry %>%
   select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
 
-mat_dif <- as.matrix(data_entry[, 3:26]) - as.matrix(data_exit[, 3:26])
-
-
+Matriz_difer <- data_entry[, 3:26] - data_exit[, 3:26]
 

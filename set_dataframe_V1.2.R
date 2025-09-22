@@ -13,6 +13,8 @@ library(purrr)
 library(janitor) 
 library(lubridate) 
 library(tidyr)
+
+
 # Define la ruta a tu carpeta principal
 ruta_carpeta <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy"
 
@@ -102,9 +104,9 @@ df_resumen <- df_combinado %>%
     hora = hour(operator)
   ) %>%
   # Agrupar los datos para el conteo
-  group_by(fecha, hora, sap_transit_flag) %>%
-  summarise(
-    conteo = n(),
+  group_by(fecha, sap_transit_flag) %>%
+  mutate(
+    conteo = cumsum(),
     .groups = 'drop'
   )
 
