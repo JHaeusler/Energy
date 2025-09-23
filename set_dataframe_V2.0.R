@@ -149,12 +149,12 @@ Matriz_difer <- data_entry[, 3:26] - data_exit[, 3:26]
 
 
 aux <- Matriz_difer[1, 23]
-
+Matriz_difer_ <- matrix(0)
 for(i in 1:(nrow(Matriz_difer) - 1)){ #  i <- 1 + i
 
   aux <- aux + Matriz_difer[i+1, ]
   
-  Matriz_difer[i+1, ] <- aux
+  Matriz_difer_[i+1, ] <- aux
   
-  aux <- Matriz_difer[i+1, 23] 
+  aux <- Matriz_difer_[i+1, 23] 
 }
