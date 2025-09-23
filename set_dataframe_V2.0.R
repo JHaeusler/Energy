@@ -29,7 +29,7 @@ archivos_excel <- list.files(
 # Crear una lista vacía para almacenar los data frames
 listas <- list()
 
-# data_aux <- read_excel(archivos_excel[1], skip = 1)
+# data_aux <- read_excel(archivos_excel[4], skip = 1)
 
 # Bucle para leer cada archivo y almacenarlo de manera segura
 for (i in 1:length(archivos_excel)) {
@@ -108,13 +108,13 @@ df_resumen_completo <- left_join(
   by = c("fecha", "transit_direction_description", "hora")
 ) %>%
   # Rellena los NA con 0
-  replace_na(list(transacciones_por_hora = 0)) %>%
+  replace_na(list(transacciones_por_hora = 0))  %>%
   # Ordena los datos por fecha y hora para que cumsum() funcione bien
   arrange(fecha, hora) %>%
-  
+
   # Agrupa por fecha y tipo de tránsito para la suma acumulada
   group_by(fecha, transit_direction_description) %>%
-  
+
   # Aplica la suma acumulada a los conteos por hora (ahora sin NAs)
   mutate(
     conteo_acumulado = cumsum(transacciones_por_hora),
@@ -132,16 +132,29 @@ columnas_horas_ordenadas <- as.character(0:23)
 
 # Seleccionar las columnas en el orden deseado
 df_pivoteado_ordenado <- df_pivoteado %>%
-  select(fecha, transit_direction_description, all_of(columnas_horas_ordenadas)) %>% 
+  select(fecha, transit_direction_description, all_of(columnas_horas_ordenadas)) %>%
   drop_na(fecha)
 
 data_exit <- df_pivoteado %>% filter(transit_direction_description == "Exit")
 data_exit <- data_exit %>%
-  select(fecha, transit_direction_description, all_of(columnas_horas_ordenadas))
+  select(fecha, transit_direction_description,
+         all_of(columnas_horas_ordenadas)) %>% drop_na(fecha)
 
 data_entry <- df_pivoteado %>% filter(transit_direction_description == "Entry")
 data_entry <- data_entry %>%
-  select(fecha, transit_direction_description, all_of(columnas_horas_ordenadas))
+  select(fecha, transit_direction_description,
+         all_of(columnas_horas_ordenadas)) %>% drop_na(fecha)
 
 Matriz_difer <- data_entry[, 3:26] - data_exit[, 3:26]
 
+
+aux <- Matriz_difer[1, 23]
+
+for(i in 1:(nrow(Matriz_difer) - 1)){ #  i <- 1 + i
+
+  aux <- aux + Matriz_difer[i+1, ]
+  
+  Matriz_difer[i+1, ] <- aux
+  
+  aux <- Matriz_difer[i+1, 23] 
+}
