@@ -1,21 +1,22 @@
-repositorio <- "http://cran.us.r-project.org"
-install.packages("tidyr", repos = repositorio)
-install.packages("readxl", repos = repositorio)
-install.packages("dplyr", repos = repositorio)
-install.packages("purrr", repos = repositorio)
-install.packages("janitor", repos = repositorio)
-install.packages("lubridate", repos = repositorio)
-
-# Cargar las librerías necesarias
-library(readxl)
-library(dplyr)
-library(purrr)
-library(janitor) 
-library(lubridate) 
-library(tidyr)
-
+# repositorio <- "http://cran.us.r-project.org"
+# install.packages("tidyr", repos = repositorio)
+# install.packages("readxl", repos = repositorio)
+# install.packages("dplyr", repos = repositorio)
+# install.packages("purrr", repos = repositorio)
+# install.packages("janitor", repos = repositorio)
+# install.packages("lubridate", repos = repositorio)
+# install.packages("lubridate", repos = repositorio)
+# 
+# # Cargar las librerías necesarias
+# library(readxl)
+# library(dplyr)
+# library(purrr)
+# library(janitor) 
+# library(lubridate) 
+# library(tidyr)
+# library(ggplot2)
 # Define la ruta a tu carpeta principal
-ruta_carpeta_NF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/New_Format"
+# ruta_carpeta_NF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/New_Format"
 ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
 
 # Obtener la lista de rutas de todos los archivos .xls y .xlsx
@@ -29,7 +30,7 @@ archivos_excel <- list.files(
 # Crear una lista vacía para almacenar los data frames
 listas <- list()
 
-# data_aux <- read_excel(archivos_excel[4], skip = 1)
+# data_aux <- read_excel(archivos_excel[31], skip = 1)
 
 # Bucle para leer cada archivo y almacenarlo de manera segura
 for (i in 1:length(archivos_excel)) {
@@ -147,12 +148,35 @@ data_entry <- data_entry %>%
 
 Matriz_difer <- data_entry[, 3:26] - data_exit[, 3:26]
 
+# colMeans(Matriz_difer)
+# rowMeans(Matriz_difer)
+# 
+# Convertir la matriz de diferencias en un data frame
+df_diferencias <- as.data.frame(Matriz_difer)
 
-aux <- rep(Matriz_difer[1, 23], ncol(Matriz_difer))
-Matriz_difer_ <- matrix(0, nrow = nrow(Matriz_difer) - 1, ncol = ncol(Matriz_difer))
-for(i in 1:(nrow(Matriz_difer_))){ #  i <- 1 + i
-  
-  Matriz_difer_[i, ] <- aux + Matriz_difer[i+1, ]
-  
-  aux <- Matriz_difer_[i, ] 
-}
+# Agregar la fecha como una columna para el pivot
+df_diferencias$fecha <- data_entry$fecha
+
+# Transformar a formato largo
+df_diferencias_long_hora <- df_diferencias %>%
+  pivot_longer(
+    cols = as.character(0:23),
+    names_to = "hora",
+    values_to = "diferencia"
+  )
+
+# Convertir la columna 'hora' a un factor para el orden correcto en el eje X
+df_diferencias_long_hora$hora <- factor(df_diferencias_long_hora$hora, levels = 0:23)
+
+ggplot(df_diferencias_long_hora, aes(x = hora, y = diferencia)) +
+  geom_boxplot(fill = "steelblue", color = "black") +
+  labs(
+    title = "Distribución de Diferencias (Entradas - Salidas) por Hora",
+    x = "Hora del Día",
+    y = "Diferencia de Transacciones"
+  ) +
+  theme_minimal()
+
+df_diferencias %>% mutate(dia_Sem = wday(fecha)) %>% 
+  mutate(state_ = ifelse(dia_Sem == 6, "Sab", ifelse(dia_Sem == 7, "Dom", "L-V")))
+

@@ -14,13 +14,13 @@ library(janitor)
 library(lubridate) 
 library(tidyr)
 
-
 # Define la ruta a tu carpeta principal
-ruta_carpeta <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy"
+ruta_carpeta_NF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/New_Format"
+ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
 
 # Obtener la lista de rutas de todos los archivos .xls y .xlsx
 archivos_excel <- list.files(
-  path = ruta_carpeta,
+  path = ruta_carpeta_OF,
   pattern = "\\.(xls|xlsx)$",
   full.names = TRUE,
   recursive = TRUE
@@ -29,35 +29,19 @@ archivos_excel <- list.files(
 # Crear una lista vacía para almacenar los data frames
 listas <- list()
 
+# data_aux <- read_excel(archivos_excel[4], skip = 1)
+
 # Bucle para leer cada archivo y almacenarlo de manera segura
 for (i in 1:length(archivos_excel)) {
   tryCatch({
-    data_aux <- read_excel(archivos_excel[i])
-
-    if ("temaline_interface" %in% colnames(data_aux)) {
-      row_aux <- which(data_aux$temaline_interface == "Views")
-      # Si se encontró el marcador, se filtra la tabla
-      if (length(row_aux) > 0) {
-        data_aux <- data_aux[1:(row_aux[1] - 1), ]
-      }
-    }
-        
-    # Renombrar la tercera columna a "operator" ANTES de cualquier operación
-    if (ncol(data_aux) >= 3) {
-      colnames(data_aux)[3] <- "operator"
-    }
+    data_aux <- read_excel(archivos_excel[i], skip = 1)
     
     # Limpiar nombres de columnas para estandarizar
     data_aux <- data_aux %>% clean_names()
     
-    # Convertir a formato de fecha y hora aquí
-    if ("operator" %in% colnames(data_aux)) {
-      data_aux$operator <- as_datetime(data_aux$operator)
-    }
-    
     # Corregir el tipo de dato de la columna 'transits'
-    if ("transits" %in% colnames(data_aux)) {
-      data_aux$transits <- as.character(data_aux$transits)
+    if ("transit_status_description" %in% colnames(data_aux)) {
+      data_aux$transit_status_description <- as.character(data_aux$transit_status_description)
     }
     
     # Corregir el tipo de dato de la columna 'card_number'
@@ -65,18 +49,21 @@ for (i in 1:length(archivos_excel)) {
       data_aux$card_number <- as.character(data_aux$card_number)
     }
     
+    # Corregir el tipo de dato de la columna 'card_number'
+    if ("identifier" %in% colnames(data_aux)) {
+      data_aux$identifier <- as.character(data_aux$identifier)
+    }
+    
+    # Corregir el tipo de dato de la columna 'card_number'
+    if ("parameter_1" %in% colnames(data_aux)) {
+      data_aux$parameter_1 <- as.character(data_aux$parameter_1)
+    }
+    
     # Corregir el tipo de dato de la columna 'transaction_date'
     if ("transaction_date" %in% colnames(data_aux)) {
       data_aux$transaction_date <- as_datetime(data_aux$transaction_date)
     }
     
-    # Corregir el tipo de dato de la columna 'transit_status'
-    if ("transit_status" %in% colnames(data_aux)) {
-      data_aux$transit_status <- as_datetime(data_aux$transit_status)
-    }
-    
-    # Encontrar la fila del marcador "views"
-
     
     # Almacenar el data frame en la lista
     listas[[i]] <- data_aux
@@ -91,48 +78,81 @@ df_combinado <- bind_rows(listas)
 
 # Lista de las categorías a filtrar en la columna 'Name'
 categorias_filtrar <- c(
-  "TK54RT54", "TK55RT55", "TK56RT56", "TK57RT57", "TK59RT58", 
+  "TK54RT54", "TK55RT55", "TK56RT56", "TK57RT57", "TK58RT58", 
   "TK60RT60", "TK72RT72", "TK76RT76", "TK77RT77", "TK78RT78"
 )
-
-# Realizar todas las operaciones de limpieza y resumen en un solo flujo
+# Paso 1: Contar las transacciones por hora (como lo habías hecho)
 df_resumen <- df_combinado %>%
-  filter(name %in% categorias_filtrar) %>%
+  filter(tema_key %in% categorias_filtrar) %>%
   mutate(
-    # Convertir la columna 'operator' a formato de fecha y hora aquí
-    fecha = as_date(operator),
-    hora = hour(operator)
+    fecha = as_date(transaction_date),
+    hora = hour(transaction_date)
   ) %>%
-  # Agrupar los datos para el conteo
-  group_by(fecha, sap_transit_flag) %>%
+  count(fecha, transit_direction_description, hora, name = "transacciones_por_hora")
+
+# Paso 2: Generar una tabla de referencia con todas las combinaciones de fecha, tipo de tránsito y hora
+fechas_unicas <- unique(df_resumen$fecha)
+tipos_transito <- unique(df_resumen$transit_direction_description)
+horas_completas <- 0:23
+
+df_horas_completas <- expand_grid(
+  fecha = fechas_unicas,
+  transit_direction_description = tipos_transito,
+  hora = horas_completas
+)
+
+# Paso 3: Unir y rellenar los datos antes de la suma acumulada
+df_resumen_completo <- left_join(
+  df_horas_completas,
+  df_resumen,
+  by = c("fecha", "transit_direction_description", "hora")
+) %>%
+  # Rellena los NA con 0
+  replace_na(list(transacciones_por_hora = 0))  %>%
+  # Ordena los datos por fecha y hora para que cumsum() funcione bien
+  arrange(fecha, hora) %>%
+  
+  # Agrupa por fecha y tipo de tránsito para la suma acumulada
+  group_by(fecha, transit_direction_description) %>%
+  
+  # Aplica la suma acumulada a los conteos por hora (ahora sin NAs)
   mutate(
-    conteo = cumsum(),
+    conteo_acumulado = cumsum(transacciones_por_hora),
     .groups = 'drop'
   )
 
-# 1. Pivoting de los datos para ver el conteo por fecha y hora
-df_pivoteado <- df_resumen %>%
+# 4. Pivoting de los datos para ver el conteo por fecha y hora
+df_pivoteado <- df_resumen_completo %>%
   pivot_wider(
-    id_cols = c(fecha, sap_transit_flag),
+    id_cols = c(fecha, transit_direction_description),
     names_from = hora,
-    values_from = conteo
+    values_from = conteo_acumulado
   )
-
 columnas_horas_ordenadas <- as.character(0:23)
 
 # Seleccionar las columnas en el orden deseado
 df_pivoteado_ordenado <- df_pivoteado %>%
-  select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
+  select(fecha, transit_direction_description, all_of(columnas_horas_ordenadas)) %>%
+  drop_na(fecha)
 
-data_exit <- df_pivoteado %>% filter(sap_transit_flag == "Exit")
+data_exit <- df_pivoteado %>% filter(transit_direction_description == "Exit")
 data_exit <- data_exit %>%
-  select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
+  select(fecha, transit_direction_description,
+         all_of(columnas_horas_ordenadas)) %>% drop_na(fecha)
 
-data_entry <- df_pivoteado %>% filter(sap_transit_flag == "Entry")
+data_entry <- df_pivoteado %>% filter(transit_direction_description == "Entry")
 data_entry <- data_entry %>%
-  select(fecha, sap_transit_flag, all_of(columnas_horas_ordenadas))
+  select(fecha, transit_direction_description,
+         all_of(columnas_horas_ordenadas)) %>% drop_na(fecha)
 
-mat_dif <- as.matrix(data_entry[, 3:26]) - as.matrix(data_exit[, 3:26])
+Matriz_difer <- data_entry[, 3:26] - data_exit[, 3:26]
 
 
-
+aux <- rep(Matriz_difer[1, 23], ncol(Matriz_difer))
+Matriz_difer_ <- matrix(0, nrow = nrow(Matriz_difer) - 1, ncol = ncol(Matriz_difer))
+for(i in 1:(nrow(Matriz_difer_))){ #  i <- 1 + i
+  
+  Matriz_difer_[i, ] <- aux + Matriz_difer[i+1, ]
+  
+  aux <- Matriz_difer_[i, ] 
+}
