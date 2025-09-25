@@ -168,15 +168,45 @@ df_diferencias_long_hora <- df_diferencias %>%
 # Convertir la columna 'hora' a un factor para el orden correcto en el eje X
 df_diferencias_long_hora$hora <- factor(df_diferencias_long_hora$hora, levels = 0:23)
 
-ggplot(df_diferencias_long_hora, aes(x = hora, y = diferencia)) +
-  geom_boxplot(fill = "steelblue", color = "black") +
-  labs(
-    title = "Distribución de Diferencias (Entradas - Salidas) por Hora",
-    x = "Hora del Día",
-    y = "Diferencia de Transacciones"
-  ) +
-  theme_minimal()
+# ggplot(df_diferencias_long_hora, aes(x = hora, y = diferencia)) +
+#   geom_boxplot(fill = "steelblue", color = "black") +
+#   labs(
+#     title = "Distribución de Diferencias (Entradas - Salidas) por Hora",
+#     x = "Hora del Día",
+#     y = "Diferencia de Transacciones"
+#   ) +
+#   theme_minimal()
 
-df_diferencias %>% mutate(dia_Sem = wday(fecha)) %>% 
-  mutate(state_ = ifelse(dia_Sem == 6, "Sab", ifelse(dia_Sem == 7, "Dom", "L-V")))
+# Paso 1: Crear las categorías de días de la semana
+aux_Q <- df_diferencias %>% 
+  mutate(dia_Sem = wday(fecha, week_start = 1)) %>% # week_start = 1: Lunes = 1, Domingo = 7
+  mutate(state_ = case_when(
+    dia_Sem >= 1 & dia_Sem <= 5 ~ "L-V",
+    dia_Sem == 6 ~ "Sab",
+    dia_Sem == 7 ~ "Dom"
+  ))
+
+aux_Q[c(1,6), 26] <- "Dom"
+
+
+
+# Paso 2: Convertir a formato largo para poder calcular el promedio
+# Esto apila las columnas de horas (0-23) en una sola columna 'diferencia'
+aux_Q_long <- aux_Q %>%
+  pivot_longer(
+    cols = as.character(0:23),
+    names_to = "hora",
+    values_to = "diferencia"
+  )
+
+# Paso 3: Agrupar por la nueva categoría de día de la semana y calcular el promedio
+resumen_promedio_dias <- aux_Q_long %>%
+  group_by(state_) %>%
+  summarise(
+    promedio_diferencia = mean(diferencia, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+print(resumen_promedio_dias)
+
 
