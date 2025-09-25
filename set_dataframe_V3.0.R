@@ -15,21 +15,31 @@ library(lubridate)
 library(tidyr)
 
 # Define la ruta a tu carpeta principal
-ruta_carpeta_NF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/New_Format"
-ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
+# ruta_carpeta_NF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/New_Format"
+# ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
+ruta_carpeta <- "D:/Github/Energy/Datos/Old_Format/2025"
 
 # Obtener la lista de rutas de todos los archivos .xls y .xlsx
 archivos_excel <- list.files(
-  path = ruta_carpeta_OF,
+  path = ruta_carpeta,
   pattern = "\\.(xls|xlsx)$",
   full.names = TRUE,
   recursive = TRUE
 )
 
+
+# # Obtener la lista de rutas de todos los archivos .xls y .xlsx
+# archivos_excel <- list.files(
+#   path = ruta_carpeta_OF,
+#   pattern = "\\.(xls|xlsx)$",
+#   full.names = TRUE,
+#   recursive = TRUE
+# )
+
 # Crear una lista vacía para almacenar los data frames
 listas <- list()
 
-# data_aux <- read_excel(archivos_excel[1], skip = 1)
+# data_aux <- read_excel(archivos_excel[1], skip = 1) i=1
 
 # Bucle para leer cada archivo y almacenarlo de manera segura
 for (i in 1:length(archivos_excel)) {
