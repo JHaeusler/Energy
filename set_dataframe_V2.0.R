@@ -196,31 +196,61 @@ df_final <- df_resumen_completo %>%
   )
 
 
-df_acum_state <- df_final %>%
+# Paso 1: Resumir los datos por franja_horaria
+df_final_sumarizado <- df_final %>%
+  group_by(fecha, transit_direction_description, franja_horaria) %>%
+  summarise(conteo_acumulado = sum(conteo_acumulado, na.rm = TRUE), .groups = "drop")
+
+# Paso 2: Pivotar los datos resumidos
+df_acum_state <- df_final_sumarizado %>%
   pivot_wider(
     id_cols = c(fecha, transit_direction_description),
     names_from = franja_horaria,
-    values_from = last(conteo_acumulado)
+    values_from = conteo_acumulado
   )
 
+# datos para graficar
 
-# Paso 2: Convertir a formato largo para poder calcular el promedio
-# Esto apila las columnas de horas (0-23) en una sola columna 'diferencia'
-aux_Q_long <- aux_Q %>%
-  pivot_longer(
-    cols = as.character(0:23),
-    names_to = "hora",
-    values_to = "diferencia"
-  )
+datosgraf <- df_acum_state %>% filter(transit_direction_description == "Entry")
 
-# Paso 3: Agrupar por la nueva categoría de día de la semana y calcular el promedio
-resumen_promedio_dias <- aux_Q_long %>%
-  group_by(state_) %>%
-  summarise(
-    promedio_diferencia = mean(diferencia, na.rm = TRUE),
-    .groups = 'drop'
-  )
+# Graficar cada serie con su propia capa geom_line()
+ggplot(datosgraf, aes(x = fecha)) +
+  geom_line(aes(y = Madrugada, color = "Madrugada")) +
+  geom_line(aes(y = Maniana, color = "Maniana")) +
+  geom_line(aes(y = Tarde, color = "Tarde")) +
+  geom_line(aes(y = Noche, color = "Noche")) +
+  labs(
+    title = "Conteo de Entradas Corregido por Fecha y Franja Horaria",
+    x = "Fecha",
+    y = "Conteo Corregido",
+    color = "Franja Horaria"
+  ) +
+  theme_minimal()
 
-print(resumen_promedio_dias)
+# Falta la de salida
 
+# Graficar cada serie con su propia capa geom_line()
+ggplot(data_para_graficar, aes(x = fecha)) +
+  geom_line(aes(y = Madrugada, color = "Madrugada")) +
+  geom_line(aes(y = Noche, color = "Noche")) +
+  labs(
+    title = "Conteo de Entradas Corregido por Fecha y Franja Horaria",
+    x = "Fecha",
+    y = "Conteo Corregido",
+    color = "Franja Horaria"
+  ) +
+  theme_minimal()
 
+# Graficar cada serie con su propia capa geom_line()
+ggplot(data_para_graficar, aes(x = fecha)) +
+  
+  geom_line(aes(y = Maniana, color = "Maniana")) +
+  geom_line(aes(y = Tarde, color = "Tarde")) +
+  
+  labs(
+    title = "Conteo de Entradas Corregido por Fecha y Franja Horaria",
+    x = "Fecha",
+    y = "Conteo Corregido",
+    color = "Franja Horaria"
+  ) +
+  theme_minimal()
