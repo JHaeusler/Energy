@@ -11,13 +11,13 @@
 # library(readxl)
 # library(dplyr)
 # library(purrr)
-# library(janitor) 
-# library(lubridate) 
+# library(janitor)
+# library(lubridate)
 # library(tidyr)
 # library(ggplot2)
 # Define la ruta a tu carpeta principal
-# ruta_carpeta_NF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/New_Format"
-ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
+# ruta_carpeta_NF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
+ruta_carpeta_OF <- "D:/Github/Energy/Datos/Old_Format/2025"
 
 # Obtener la lista de rutas de todos los archivos .xls y .xlsx
 archivos_excel <- list.files(
@@ -178,7 +178,7 @@ df_diferencias_long_hora$hora <- factor(df_diferencias_long_hora$hora, levels = 
 #   theme_minimal()
 
 # Paso 1: Crear las categorías de días de la semana
-aux_Q <- df_diferencias %>% 
+aux_day <- df_diferencias %>% 
   mutate(dia_Sem = wday(fecha, week_start = 1)) %>% # week_start = 1: Lunes = 1, Domingo = 7
   mutate(state_ = case_when(
     dia_Sem >= 1 & dia_Sem <= 5 ~ "L-V",
@@ -186,8 +186,25 @@ aux_Q <- df_diferencias %>%
     dia_Sem == 7 ~ "Dom"
   ))
 
-aux_Q[c(1,6), 26] <- "Dom"
+aux_day[c(1,6), 26] <- "Dom"
 
+
+aux_hour <- df_resumen_completo
+state_day <- aux_hour %>% mutate(state = case_when(
+  hora >= 0 & hora <= 5 ~ "Madrugada",
+  hora >= 6 & hora <= 12 ~ "Mañana",
+  hora >= 13 & hora <= 18 ~ "Tarde",
+  hora >= 19 & hora <= 23 ~ "Noche"
+  ))
+
+state_day
+
+state_pivoteado <- df_resumen_completo %>%
+  pivot_wider(
+    id_cols = c(fecha, transit_direction_description),
+    names_from = state_day,
+    values_from = conteo_acumulado
+  )
 
 
 # Paso 2: Convertir a formato largo para poder calcular el promedio
