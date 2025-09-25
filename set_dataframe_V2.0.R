@@ -7,14 +7,14 @@
 # install.packages("lubridate", repos = repositorio)
 # install.packages("lubridate", repos = repositorio)
 # 
-# # Cargar las librerías necesarias
-# library(readxl)
-# library(dplyr)
-# library(purrr)
-# library(janitor)
-# library(lubridate)
-# library(tidyr)
-# library(ggplot2)
+# Cargar las librerías necesarias
+library(readxl)
+library(dplyr)
+library(purrr)
+library(janitor)
+library(lubridate)
+library(tidyr)
+library(ggplot2)
 # Define la ruta a tu carpeta principal
 # ruta_carpeta_NF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
 ruta_carpeta_OF <- "D:/Github/Energy/Datos/Old_Format/2025"
@@ -177,33 +177,30 @@ df_diferencias_long_hora$hora <- factor(df_diferencias_long_hora$hora, levels = 
 #   ) +
 #   theme_minimal()
 
-# Paso 1: Crear las categorías de días de la semana
-aux_day <- df_diferencias %>% 
-  mutate(dia_Sem = wday(fecha, week_start = 1)) %>% # week_start = 1: Lunes = 1, Domingo = 7
-  mutate(state_ = case_when(
-    dia_Sem >= 1 & dia_Sem <= 5 ~ "L-V",
-    dia_Sem == 6 ~ "Sab",
-    dia_Sem == 7 ~ "Dom"
-  ))
+df_final <- df_resumen_completo %>%
+  mutate(
+    franja_horaria = case_when(
+      hora >= 0 & hora <= 5 ~ "Madrugada",
+      hora >= 6 & hora <= 12 ~ "Maniana",
+      hora >= 13 & hora <= 18 ~ "Tarde",
+      hora >= 19 & hora <= 23 ~ "Noche",
+      TRUE ~ NA_character_
+    ),
+    dia_Sem = wday(fecha, week_start = 1),
+    tipo_dia = case_when(
+      dia_Sem >= 1 & dia_Sem <= 5 ~ "L-V",
+      dia_Sem == 6 ~ "Sab",
+      dia_Sem == 7 ~ "Dom",
+      TRUE ~ NA_character_
+    )
+  )
 
-aux_day[c(1,6), 26] <- "Dom"
 
-
-aux_hour <- df_resumen_completo
-state_day <- aux_hour %>% mutate(state = case_when(
-  hora >= 0 & hora <= 5 ~ "Madrugada",
-  hora >= 6 & hora <= 12 ~ "Mañana",
-  hora >= 13 & hora <= 18 ~ "Tarde",
-  hora >= 19 & hora <= 23 ~ "Noche"
-  ))
-
-state_day
-
-state_pivoteado <- df_resumen_completo %>%
+df_acum_state <- df_final %>%
   pivot_wider(
     id_cols = c(fecha, transit_direction_description),
-    names_from = state_day,
-    values_from = conteo_acumulado
+    names_from = franja_horaria,
+    values_from = last(conteo_acumulado)
   )
 
 

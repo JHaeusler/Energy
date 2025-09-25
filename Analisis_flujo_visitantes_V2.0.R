@@ -1,20 +1,20 @@
-# repositorio <- "http://cran.us.r-project.org"
-# install.packages("tidyr", repos = repositorio)
-# install.packages("readxl", repos = repositorio)
-# install.packages("dplyr", repos = repositorio)
-# install.packages("purrr", repos = repositorio)
-# install.packages("janitor", repos = repositorio)
-# install.packages("lubridate", repos = repositorio)
+repositorio <- "http://cran.us.r-project.org"
+install.packages("tidyr", repos = repositorio)
+install.packages("readxl", repos = repositorio)
+install.packages("dplyr", repos = repositorio)
+install.packages("purrr", repos = repositorio)
+install.packages("janitor", repos = repositorio)
+install.packages("lubridate", repos = repositorio)
 # 
 #
 # Carga de paquetes
-library(readxl)
-library(dplyr)
-library(purrr)
-library(janitor)
-library(lubridate)
-library(tidyr)
-library(ggplot2)
+# library(readxl)
+# library(dplyr)
+# library(purrr)
+# library(janitor)
+# library(lubridate)
+# library(tidyr)
+# library(ggplot2)
 
 # Define la ruta a tu carpeta principal
 # Es importante que reemplaces esta ruta con la de tu propio sistema
@@ -158,7 +158,7 @@ df_promedios_pivot <- df_analisis_final %>%
   pivot_wider(
     id_cols = c(tipo_dia, transit_direction_description),
     names_from = franja_horaria,
-    values_from = c(conteo_promedio, desviacion_estandar)
+    values_from = conteo_acumulado
   )
 
 
@@ -170,6 +170,8 @@ df_difer_acum <- df_corregido %>%
     names_from = hora,
     values_from = conteo_corregido
   )
+
+
 
 aux_data <- df_pivoteado_corregido %>% 
          filter(transit_direction_description == "Entry")
@@ -187,20 +189,21 @@ ggplot(aux_data,
   theme_minimal()
   
 
-# Asegúrate de tener la librería ggplot2 cargada
-library(ggplot2)
-
 # Filtra el dataframe corregido para incluir solo las "Entradas"
 # para que el gráfico muestre todas las franjas horarias de entradas
 
 
-ggplot() +
-  
-       geom_line(aes(x = fecha, y = Madrugada), aux_data) +
-  geom_line(aes(x = fecha, y = Madrugada), aux_data) +
-  geom_line(aes(x = fecha, y = Maniana), aux_data) +
-  geom_line(aes(x = fecha, y = Tarde), aux_data) +
-  geom_line(aes(x = fecha, y = Noche), aux_data)+
+# Asegúrate de usar el dataframe en formato ancho, filtrando solo las entradas
+# Para unificar el dataframe, es mejor usar `df_pivoteado_corregido`
+data_para_graficar <- df_pivoteado_corregido %>%
+  filter(transit_direction_description == "Entry")
+
+# Graficar cada serie con su propia capa geom_line()
+ggplot(data_para_graficar, aes(x = fecha)) +
+  geom_line(aes(y = Madrugada, color = "Madrugada")) +
+  geom_line(aes(y = Maniana, color = "Maniana")) +
+  geom_line(aes(y = Tarde, color = "Tarde")) +
+  geom_line(aes(y = Noche, color = "Noche")) +
   labs(
     title = "Conteo de Entradas Corregido por Fecha y Franja Horaria",
     x = "Fecha",
@@ -209,4 +212,52 @@ ggplot() +
   ) +
   theme_minimal()
   
+# Falta la de salida
+
+# Graficar cada serie con su propia capa geom_line()
+ggplot(data_para_graficar, aes(x = fecha)) +
+  geom_line(aes(y = Madrugada, color = "Madrugada")) +
+  geom_line(aes(y = Noche, color = "Noche")) +
+  labs(
+    title = "Conteo de Entradas Corregido por Fecha y Franja Horaria",
+    x = "Fecha",
+    y = "Conteo Corregido",
+    color = "Franja Horaria"
+  ) +
+  theme_minimal()
+
+# Graficar cada serie con su propia capa geom_line()
+ggplot(data_para_graficar, aes(x = fecha)) +
+
+  geom_line(aes(y = Maniana, color = "Maniana")) +
+  geom_line(aes(y = Tarde, color = "Tarde")) +
+
+  labs(
+    title = "Conteo de Entradas Corregido por Fecha y Franja Horaria",
+    x = "Fecha",
+    y = "Conteo Corregido",
+    color = "Franja Horaria"
+  ) +
+  theme_minimal()
+
+# Paso 3: Unir y rellenar los datos antes de la suma acumulada
+df_resumen_completo_ <- left_join(
+  df_horas_completas,
+  df_resumen,
+  by = c("fecha", "transit_direction_description", "hora")
+) %>%
+  # Rellena los NA con 0
+  replace_na(list(transacciones_por_hora = 0))  %>%
+  # Ordena los datos por fecha y hora para que cumsum() funcione bien
+  arrange(fecha, hora) %>%
   
+  # Agrupa por fecha y tipo de tránsito para la suma acumulada
+  group_by(fecha, transit_direction_description) %>%
+  
+  # Aplica la suma acumulada a los conteos por hora (ahora sin NAs)
+  mutate(
+    conteo_acumulado = cumsum(transacciones_por_hora),
+    .groups = 'drop'
+  )
+
+
