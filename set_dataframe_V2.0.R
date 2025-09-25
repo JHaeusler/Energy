@@ -196,10 +196,17 @@ df_final <- df_resumen_completo %>%
   )
 
 
-# Paso 1: Resumir los datos por franja_horaria
+# Paso 1: Resumir los datos por franja_horaria (se mantiene igual)
 df_final_sumarizado <- df_final %>%
   group_by(fecha, transit_direction_description, franja_horaria) %>%
   summarise(conteo_acumulado = sum(conteo_acumulado, na.rm = TRUE), .groups = "drop")
+
+# --- Paso Adicional para Ordenar los Títulos ---
+# Convertir la columna 'franja_horaria' a un factor con los niveles ordenados
+df_final_sumarizado$franja_horaria <- factor(
+  df_final_sumarizado$franja_horaria,
+  levels = c("Madrugada", "Maniana", "Tarde", "Noche")
+)
 
 # Paso 2: Pivotar los datos resumidos
 df_acum_state <- df_final_sumarizado %>%
