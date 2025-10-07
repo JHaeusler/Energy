@@ -17,7 +17,8 @@ library(tidyr)
 library(ggplot2)
 
 # Define la ruta a tu carpeta principal
-ruta_carpeta_OF <- "D:/Github/Energy/Datos/Old_Format/2025"
+ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
+# ruta_carpeta_OF <- "D:/Github/Energy/Datos/Old_Format/2025"
 
 # --- BLOQUE 1: CARGA, LIMPIEZA Y COMBINACIÓN DE DATOS ---
 
