@@ -304,3 +304,299 @@ message("Grafico 4: Desviación Estándar del Conteo Imputado")
 
 message("\n✅ Proceso de ETL y Análisis Completado con Visualizaciones.")
 message("Revise las ventanas de gráficos para ver los resultados visuales.")
+
+# Definir el orden y las etiquetas en español para los días de la semana
+# (Asumiendo que 1=Lunes, 7=Domingo, según la definición de wday(week_start=1) en tu código)
+dias_espanol <- c("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+
+# 1. Preparar los datos: Crear una variable de factor ordenada para el eje X
+df_boxplot_dias <- df_final %>%
+  mutate(
+    dia_ordenado = factor(
+      dia_Sem,
+      levels = 1:7,
+      labels = dias_espanol,
+      ordered = TRUE
+    )
+  )
+
+# 2. Generar el Boxplot
+# Usamos facet_wrap para separar las Entradas y Salidas en dos paneles distintos.
+ggplot(df_boxplot_dias, aes(x = dia_ordenado, y = transacciones_por_hora)) +
+  # Pintamos el boxplot. Usamos fill según la dirección para mejor contraste visual.
+  geom_boxplot(aes(fill = transit_direction_description), alpha = 0.8) +
+  
+  # Separamos el gráfico en dos paneles (uno para Entry y uno para Exit)
+  facet_wrap(~transit_direction_description, scales = "free_y", 
+             labeller = as_labeller(c(Entry = "Entradas", Exit = "Salidas"))) +
+  
+  labs(
+    title = "Distribución de Transacciones Imputadas por Día de la Semana",
+    subtitle = "El boxplot representa el conteo horario (Entradas y Salidas separadas)",
+    x = "Día de la Semana",
+    y = "Transacciones por Hora (Conteo Imputado)"
+  ) +
+  scale_fill_manual(values = c("Entry" = "#0072B2", "Exit" = "#D55E00")) + # Colores temáticos
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "none" # La leyenda ya no es necesaria al usar facet_wrap
+  )
+
+message("Gráfico 5: Boxplot de Conteo por Día de la Semana generado.")
+
+# Definir el orden y las etiquetas en español para los días de la semana
+dias_espanol <- c("Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom")
+
+# 1. Preparar los datos y agregar el factor ordenado del día
+df_boxplot_flujo_neto <- df_flujo_neto_IMPUTADO_long %>%
+  mutate(
+    dia_Sem = wday(fecha, week_start = 1),
+    dia_ordenado = factor(
+      dia_Sem,
+      levels = 1:7,
+      labels = dias_espanol,
+      ordered = TRUE
+    )
+  )
+
+# 2. CALCULAR LAS ESTADÍSTICAS LOCALES (por día de la semana)
+df_stats_locales <- df_boxplot_flujo_neto %>%
+  group_by(dia_ordenado, tipo_dia) %>% # Agrupamos por día ordenado y tipo de día
+  summarise(
+    media_local = mean(flujo_neto_ajustado, na.rm = TRUE),
+    p10_local = quantile(flujo_neto_ajustado, 0.10, na.rm = TRUE),
+    p90_local = quantile(flujo_neto_ajustado, 0.90, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+# --- 3. GENERAR EL BOXPLOT CON PUNTOS DE REFERENCIA LOCALES ---
+
+ggplot(df_boxplot_flujo_neto, aes(x = dia_ordenado, y = flujo_neto_ajustado)) +
+  
+  # 3a. Pintar el boxplot
+  geom_boxplot(aes(fill = tipo_dia), alpha = 0.8) +
+  
+  # 3b. Añadir la línea de equilibrio
+  geom_hline(yintercept = 0, linetype = "solid", color = "gray20", linewidth = 0.8) +
+  
+  # 3c. Añadir los PUNTOS DE ESTADÍSTICAS LOCALES usando df_stats_locales
+  
+  # Media Local (Punto grande negro/azul)
+  geom_point(data = df_stats_locales, 
+             aes(y = media_local, color = "Media"), 
+             size = 3.5, shape = 18) + # Forma de diamante
+  
+  # Percentil 90 Local (Punto pequeño rojo)
+  geom_point(data = df_stats_locales, 
+             aes(y = p90_local, color = "P90"), 
+             size = 2, shape = 17) + # Forma de triángulo
+  
+  # Percentil 10 Local (Punto pequeño rojo)
+  geom_point(data = df_stats_locales, 
+             aes(y = p10_local, color = "P10"), 
+             size = 2, shape = 17) + # Forma de triángulo
+  
+  labs(
+    title = "Flujo Neto Ajustado: Distribución Semanal con Estadísticas Locales",
+    subtitle = "Los puntos indican la Media (diamante) y los Percentiles P10/P90 (triángulos) de cada día.",
+    x = "Día de la Semana",
+    y = "Flujo Neto Ajustado (Entradas - Salidas)",
+    fill = "Tipo de Día",
+    color = "Estadística"
+  ) +
+  scale_color_manual(
+    values = c("Media" = "black", "P10" = "red", "P90" = "red"),
+    labels = c("Media", "P10", "P90")
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold")
+  )
+
+message("Gráfico 6 (Definitivo) generado con Media, P10 y P90 como puntos locales por boxplot.")
+
+# Definir el orden de las franjas horarias para el eje X
+orden_franjas <- c("Madrugada", "Maniana", "Tarde", "Noche")
+
+# 1. Preparar y filtrar los datos: Solo Lunes a Viernes
+df_boxplot_franjas_lv <- df_imputado %>%
+  filter(tipo_dia == "L-V") %>%
+  mutate(
+    # Asegurar el orden correcto de las franjas horarias
+    franja_ordenada = factor(franja_horaria, levels = orden_franjas, ordered = TRUE)
+  )
+
+# 2. Generar el Boxplot
+ggplot(df_boxplot_franjas_lv, aes(x = franja_ordenada, y = transacciones_imputadas)) +
+  
+  # Pintamos el boxplot. Usamos fill según la dirección.
+  geom_boxplot(aes(fill = transit_direction_description), alpha = 0.8) +
+  
+  # Separamos el gráfico en dos paneles (uno para Entry y uno para Exit)
+  facet_wrap(~transit_direction_description, scales = "free_y", 
+             labeller = as_labeller(c(Entry = "Entradas (L-V)", Exit = "Salidas (L-V)"))) +
+  
+  labs(
+    title = "Distribución del Conteo Absoluto por Franja Horaria (Lunes a Viernes)",
+    subtitle = "El conteo imputado muestra la variabilidad típica por hora en cada franja.",
+    x = "Franja Horaria",
+    y = "Conteo por Hora (Transacciones Imputadas)"
+  ) +
+  scale_fill_manual(values = c("Entry" = "#0072B2", "Exit" = "#D55E00")) + # Colores temáticos
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold"),
+    legend.position = "none" # La leyenda ya no es necesaria al usar facet_wrap
+  )
+
+message("Gráfico 7: Boxplot de Conteo Absoluto por Franja Horaria (Lunes a Viernes) generado.")
+
+# Definir el orden de las franjas horarias y días para el eje X y etiquetas
+orden_franjas <- c("Madrugada", "Maniana", "Tarde", "Noche")
+dias_espanol_lv <- c("Lun", "Mar", "Mié", "Jue", "Vie")
+
+# 1. Preparar y filtrar los datos: Solo Lunes a Viernes
+df_boxplot_franjas_diario <- df_imputado %>%
+  filter(tipo_dia == "L-V") %>%
+  mutate(
+    # Crear factor ordenado para Franja Horaria (Eje X)
+    franja_ordenada = factor(franja_horaria, levels = orden_franjas, ordered = TRUE),
+    # Crear factor ordenado para Día de la Semana (Facetas horizontales)
+    dia_Sem = wday(fecha, week_start = 1),
+    dia_ordenado = factor(dia_Sem, levels = 1:5, labels = dias_espanol_lv, ordered = TRUE)
+  )
+
+# 2. CALCULAR LAS ESTADÍSTICAS LOCALES (por Día, Franja y Dirección)
+df_stats_locales_diario <- df_boxplot_franjas_diario %>%
+  group_by(dia_ordenado, franja_ordenada, transit_direction_description) %>%
+  summarise(
+    media_local = mean(transacciones_por_hora, na.rm = TRUE),
+    p10_local = quantile(transacciones_por_hora, 0.10, na.rm = TRUE),
+    p90_local = quantile(transacciones_por_hora, 0.90, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+# --- 3. GENERAR EL BOXPLOT CON PUNTOS DE REFERENCIA LOCALES ---
+
+ggplot(df_boxplot_franjas_diario, aes(x = franja_ordenada, y = transacciones_por_hora)) +
+  
+  # 3a. Pintar el boxplot
+  geom_boxplot(aes(fill = transit_direction_description), alpha = 0.8) +
+  
+  # 3b. Añadir los PUNTOS DE ESTADÍSTICAS LOCALES usando df_stats_locales_diario
+  
+  # Media Local (Punto grande negro/azul)
+  geom_point(data = df_stats_locales_diario, 
+             aes(y = media_local, color = "Media"), 
+             size = 2.5, shape = 18) + # Forma de diamante
+  
+  # Percentil 90 Local (Punto pequeño rojo)
+  geom_point(data = df_stats_locales_diario, 
+             aes(y = p90_local, color = "P90"), 
+             size = 1.5, shape = 17) + # Forma de triángulo
+  
+  # Percentil 10 Local (Punto pequeño rojo)
+  geom_point(data = df_stats_locales_diario, 
+             aes(y = p10_local, color = "P10"), 
+             size = 1.5, shape = 17) + # Forma de triángulo
+  
+  # 3c. Separación total: Dirección (Filas) vs. Día (Columnas)
+  facet_grid(transit_direction_description ~ dia_ordenado, scales = "free_y", 
+             labeller = labeller(transit_direction_description = c(Entry = "Entradas", Exit = "Salidas"))) +
+  
+  labs(
+    title = "Conteo Horario Imputado por Franja y Día (Lunes a Viernes)",
+    subtitle = "Los puntos indican la Media (diamante) y los Percentiles P10/P90 (triángulos) para cada combinación.",
+    x = "Franja Horaria",
+    y = "Conteo por Hora (Transacciones Imputadas)",
+    fill = "Dirección",
+    color = "Estadística"
+  ) +
+  scale_fill_manual(values = c("Entry" = "#0072B2", "Exit" = "#D55E00"), guide = "none") +
+  scale_color_manual(
+    values = c("Media" = "black", "P10" = "red", "P90" = "red")
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "bottom"
+  )
+
+message("Gráfico 8: Boxplot de Conteo Absoluto Desglosado por Día y Franja Horaria generado.")
+
+# Definir el orden de las franjas horarias y días para el eje X y etiquetas
+orden_franjas <- c("Madrugada", "Maniana", "Tarde", "Noche")
+dias_espanol_lv <- c("Lun", "Mar", "Mié", "Jue", "Vie")
+
+# 1. Preparar y filtrar los datos: Flujo Neto solo Lunes a Viernes
+# df_flujo_neto_IMPUTADO_long ya debe contener franja_horaria y dia_Sem
+df_boxplot_flujo_neto_diario <- df_imputado %>%
+  # Asegurar que solo incluimos Lunes a Viernes 
+  filter(tipo_dia == "L-V") %>%
+  mutate(
+    # Crear factor ordenado para Franja Horaria (Eje X)
+    franja_ordenada = factor(franja_horaria, levels = orden_franjas, ordered = TRUE),
+    # Crear factor ordenado para Día de la Semana (Facetas)
+    dia_ordenado = factor(dia_Sem, levels = 1:5, labels = dias_espanol_lv, ordered = TRUE)
+  )
+
+# 2. CALCULAR LAS ESTADÍSTICAS LOCALES (por Día y Franja)
+df_stats_neto_diario <- df_boxplot_flujo_neto_diario %>%
+  group_by(dia_ordenado, franja_ordenada) %>%
+  summarise(
+    media_local = mean(transacciones_imputadas, na.rm = TRUE),
+    p10_local = quantile(transacciones_imputadas, 0.10, na.rm = TRUE),
+    p90_local = quantile(transacciones_imputadas, 0.90, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+# --- 3. GENERAR EL BOXPLOT CON PUNTOS DE REFERENCIA LOCALES ---
+
+ggplot(df_boxplot_flujo_neto_diario, aes(x = franja_ordenada, y = transacciones_imputadas)) +
+  
+  # 3a. Pintar el boxplot.
+  geom_boxplot(aes(fill = franja_ordenada), alpha = 0.8, show.legend = FALSE) +
+  
+  # 3b. Añadir la línea de equilibrio (Flujo Neto = 0)
+  geom_hline(yintercept = 0, linetype = "solid", color = "gray20", linewidth = 0.8) +
+  
+  # 3c. Añadir los PUNTOS DE ESTADÍSTICAS LOCALES
+  
+  # Media Local (Punto grande negro/azul)
+  geom_point(data = df_stats_neto_diario, 
+             aes(y = media_local, color = "Media"), 
+             size = 2.5, shape = 18) + # Forma de diamante
+  
+  # Percentil 90 Local (Punto pequeño rojo)
+  geom_point(data = df_stats_neto_diario, 
+             aes(y = p90_local, color = "P90"), 
+             size = 1.5, shape = 17) + # Forma de triángulo
+  
+  # Percentil 10 Local (Punto pequeño rojo)
+  geom_point(data = df_stats_neto_diario, 
+             aes(y = p10_local, color = "P10"), 
+             size = 1.5, shape = 17) + # Forma de triángulo
+  
+  # 3d. Separación total: Día (Facetas horizontales)
+  facet_wrap(~dia_ordenado, scales = "free_y", ncol = 5) +
+  
+  labs(
+    title = "Flujo Neto Ajustado por Franja Horaria (Lunes a Viernes)",
+    subtitle = "La línea en 0 marca el equilibrio. El diamante es la Media, los triángulos P10/P90.",
+    x = "Franja Horaria",
+    y = "Flujo Neto Ajustado (Entradas - Salidas)",
+    color = "Estadística"
+  ) +
+  scale_color_manual(
+    values = c("Media" = "black", "P10" = "red", "P90" = "red")
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 8),
+    legend.position = "bottom"
+  )
+
+message("✅ Gráfico 9: Boxplot de Flujo Neto Ajustado Desglosado por Día y Franja Horaria listo para visualizar.")
