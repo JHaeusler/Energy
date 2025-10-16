@@ -8,18 +8,18 @@ install.packages("lubridate", repos = repositorio)
 # 
 #
 # Carga de paquetes
-# library(readxl)
-# library(dplyr)
-# library(purrr)
-# library(janitor)
-# library(lubridate)
-# library(tidyr)
-# library(ggplot2)
+library(readxl)
+library(dplyr)
+library(purrr)
+library(janitor)
+library(lubridate)
+library(tidyr)
+library(ggplot2)
 
 # Define la ruta a tu carpeta principal
 # Es importante que reemplaces esta ruta con la de tu propio sistema
-# ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
-ruta_carpeta_OF <- "D:/Github/Energy/Datos/Old_Format/2025"
+ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
+# ruta_carpeta_OF <- "D:/Github/Energy/Datos/Old_Format/2025"
 
 # --- 1. Lectura y Consolidación de Archivos ---
 
@@ -32,11 +32,11 @@ archivos_excel <- list.files(
 )
 
 # Leer y combinar todos los data frames en uno solo usando purrr::map_dfr
-df_combinado <- purrr::map_dfr(archivos_excel, ~{
+df_combinado <- map_dfr(archivos_excel, ~{
   tryCatch({
     # Leer el archivo y limpiar nombres de columnas
-    data_aux <- readxl::read_excel(., skip = 1) %>% 
-      janitor::clean_names()
+    data_aux <- read_excel(., skip = 1) %>% 
+      clean_names()
     
     # Corregir tipos de datos usando dplyr::across para un código más conciso
     data_aux <- data_aux %>%
@@ -153,6 +153,27 @@ df_pivoteado_corregido <- df_corregido %>%
     values_from = conteo_corregido
   )
 
+# Paso 3: Unir y rellenar los datos antes de la suma acumulada
+df_resumen_completo_ <- left_join(
+  df_horas_completas,
+  df_resumen,
+  by = c("fecha", "transit_direction_description", "hora")
+) %>%
+  # Rellena los NA con 0
+  replace_na(list(transacciones_por_hora = 0))  %>%
+  # Ordena los datos por fecha y hora para que cumsum() funcione bien
+  arrange(fecha, hora) %>%
+  
+  # Agrupa por fecha y tipo de tránsito para la suma acumulada
+  group_by(fecha, transit_direction_description) %>%
+  
+  # Aplica la suma acumulada a los conteos por hora (ahora sin NAs)
+  mutate(
+    conteo_acumulado = cumsum(transacciones_por_hora),
+    .groups = 'drop'
+  )
+
+
 # Opcional: Pivotear los promedios y desviaciones estándar para un resumen
 df_promedios_pivot <- df_analisis_final %>%
   pivot_wider(
@@ -171,10 +192,18 @@ df_difer_acum <- df_corregido %>%
     values_from = conteo_corregido
   )
 
+# Filtra el dataframe corregido para incluir solo las "Entradas"
+# para que el gráfico muestre todas las franjas horarias de entradas
+
+
+# Asegúrate de usar el dataframe en formato ancho, filtrando solo las entradas
+# Para unificar el dataframe, es mejor usar `df_pivoteado_corregido`
+data_para_graficar <- df_pivoteado_corregido %>%
+  filter(transit_direction_description == "Entry")
 
 
 aux_data <- df_pivoteado_corregido %>% 
-         filter(transit_direction_description == "Entry")
+  filter(transit_direction_description == "Entry")
 
 
 ggplot(aux_data,
@@ -187,16 +216,6 @@ ggplot(aux_data,
     y = "Conteo Corregido"
   ) +
   theme_minimal()
-  
-
-# Filtra el dataframe corregido para incluir solo las "Entradas"
-# para que el gráfico muestre todas las franjas horarias de entradas
-
-
-# Asegúrate de usar el dataframe en formato ancho, filtrando solo las entradas
-# Para unificar el dataframe, es mejor usar `df_pivoteado_corregido`
-data_para_graficar <- df_pivoteado_corregido %>%
-  filter(transit_direction_description == "Entry")
 
 # Graficar cada serie con su propia capa geom_line()
 ggplot(data_para_graficar, aes(x = fecha)) +
@@ -239,26 +258,6 @@ ggplot(data_para_graficar, aes(x = fecha)) +
     color = "Franja Horaria"
   ) +
   theme_minimal()
-
-# Paso 3: Unir y rellenar los datos antes de la suma acumulada
-df_resumen_completo_ <- left_join(
-  df_horas_completas,
-  df_resumen,
-  by = c("fecha", "transit_direction_description", "hora")
-) %>%
-  # Rellena los NA con 0
-  replace_na(list(transacciones_por_hora = 0))  %>%
-  # Ordena los datos por fecha y hora para que cumsum() funcione bien
-  arrange(fecha, hora) %>%
-  
-  # Agrupa por fecha y tipo de tránsito para la suma acumulada
-  group_by(fecha, transit_direction_description) %>%
-  
-  # Aplica la suma acumulada a los conteos por hora (ahora sin NAs)
-  mutate(
-    conteo_acumulado = cumsum(transacciones_por_hora),
-    .groups = 'drop'
-  )
 
 
 

@@ -11,8 +11,8 @@
 
 # Define la ruta a tu carpeta principal
 # Define la ruta a tu carpeta principal
-# ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
-ruta_carpeta_OF <- "D:/Github/Energy/Datos/Old_Format/2025"
+ruta_carpeta_OF <- "~/Personal/Escuela Pol. Feminista/Feministadística/GitHub/Energy/Datos/Old_Format/2025"
+# ruta_carpeta_OF <- "D:/Github/Energy/Datos/Old_Format/2025"
 
 # Obtener la lista de rutas de todos los archivos .xls y .xlsx de forma segura
 archivos_excel <- list.files(
@@ -120,9 +120,7 @@ df_diferencias_long_hora <- df_diferencias %>%
   )
 df_diferencias_long_hora$hora <- factor(df_diferencias_long_hora$hora, levels = 0:23)
 
----
-  
-  ### Análisis Adicional Corregido
+### Análisis Adicional Corregido
   
   # 1. Añadir la columna de franja horaria al data frame de resumen completo
   df_resumen_con_franjas <- df_resumen_completo %>%

@@ -1,12 +1,11 @@
-# repositorio <- "http://cran.us.r-project.org"
-# install.packages("tidyr", repos = repositorio)
-# install.packages("readxl", repos = repositorio)
-# install.packages("dplyr", repos = repositorio)
-# install.packages("purrr", repos = repositorio)
-# install.packages("janitor", repos = repositorio)
-# install.packages("lubridate", repos = repositorio)
-# install.packages("lubridate", repos = repositorio)
-# 
+repositorio <- "http://cran.us.r-project.org"
+install.packages("tidyr", repos = repositorio)
+install.packages("readxl", repos = repositorio)
+install.packages("dplyr", repos = repositorio)
+install.packages("purrr", repos = repositorio)
+install.packages("janitor", repos = repositorio)
+install.packages("lubridate", repos = repositorio)
+
 # Cargar las librerías necesarias
 library(readxl)
 library(dplyr)
